@@ -1,0 +1,3 @@
+repo.maven.apache.org
+plugins.gradle.org
+services.gradle.org
