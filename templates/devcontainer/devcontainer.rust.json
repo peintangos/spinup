@@ -44,7 +44,11 @@
     "source=claude-code-bashhistory-${devcontainerId},target=/commandhistory,type=volume",
     "source=claude-code-config-${devcontainerId},target=/home/node/.claude,type=volume",
     "source=${localEnv:HOME}/.claude/agents,target=/home/node/.claude/agents,type=bind",
-    "source=${localEnv:HOME}/.claude/skills,target=/home/node/.claude/skills,type=bind"
+    "source=${localEnv:HOME}/.claude/skills,target=/home/node/.claude/skills,type=bind",
+    "source=${localEnv:HOME}/.claude/rules,target=/home/node/.claude/rules,type=bind",
+    "source=${localEnv:HOME}/.claude/CLAUDE.md,target=/home/node/.claude/CLAUDE.md,type=bind",
+    "source=${localEnv:HOME}/.claude/settings.json,target=/home/node/.claude/settings.json,type=bind",
+    "source=${localEnv:HOME}/.claude/plugins,target=/home/node/.claude/plugins,type=bind"
   ],
   "containerEnv": {
     "NODE_OPTIONS": "--max-old-space-size=4096",
