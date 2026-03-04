@@ -62,6 +62,7 @@ CLONE_PATH="$(cd "$(dirname "$0")/.." && pwd)"
 CLONE_PATH_SET=false
 VISIBILITY="private"
 DESCRIPTION=""
+SETUP_CLAUDE=false
 
 usage() {
     cat <<EOF
@@ -74,6 +75,7 @@ Options:
   -p, --path <path>         Clone destination (default: spinup parent directory)
   --public                  Public repository (default: private)
   -d, --description <desc>  Repository description
+  --claude                  Set up Claude Code config (.claude/ and CLAUDE.md)
   -h, --help                Show this help
 EOF
     exit 0
@@ -100,6 +102,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --public)
             VISIBILITY="public"
+            shift
+            ;;
+        --claude)
+            SETUP_CLAUDE=true
             shift
             ;;
         -d|--description)
@@ -188,7 +194,16 @@ if [ -z "$DESCRIPTION" ]; then
     read -r DESCRIPTION
 fi
 
-# 6. Clone path
+# 6. Claude Code setup
+if [ "$SETUP_CLAUDE" = false ]; then
+    echo -e "\n${BOLD}Set up Claude Code config? [y/N]:${NC}"
+    read -r claude_input
+    if [[ "$claude_input" =~ ^[yY]$ ]]; then
+        SETUP_CLAUDE=true
+    fi
+fi
+
+# 7. Clone path
 if [ "$CLONE_PATH_SET" = false ]; then
     echo -e "\n${BOLD}Clone path (default: $CLONE_PATH):${NC}"
     read -r path_input
@@ -214,6 +229,7 @@ echo -e "  Runtime:     ${CYAN}$RUNTIME $VERSION${NC}"
 echo -e "  Visibility:  ${CYAN}$VISIBILITY${NC}"
 echo -e "  Clone path:  ${CYAN}$CLONE_PATH/$REPO_NAME${NC}"
 [ -n "$DESCRIPTION" ] && echo -e "  Description: ${CYAN}$DESCRIPTION${NC}"
+echo -e "  Claude Code: ${CYAN}$([ "$SETUP_CLAUDE" = true ] && echo "yes" || echo "no")${NC}"
 echo ""
 
 read -r -p "Proceed? [y/N] " confirm
@@ -291,6 +307,46 @@ if [ -d "$SAMPLE_DIR" ]; then
                 "$SAMPLE_DIR/$dest" > "$PROJECT_DIR/$dest"
         fi
     done)
+fi
+
+# --- Set up Claude Code (optional) ---
+
+if [ "$SETUP_CLAUDE" = true ]; then
+    info "Setting up Claude Code configuration..."
+
+    # CLAUDE.md をコピー（プレースホルダを置換）
+    sed -e "s/{{PROJECT_NAME}}/$REPO_NAME/g" \
+        -e "s/{{RUNTIME}}/$RUNTIME/g" \
+        -e "s/{{VERSION}}/$VERSION/g" \
+        "$TEMPLATES_DIR/claude/CLAUDE.md.tmpl" > "$PROJECT_DIR/CLAUDE.md"
+
+    # .claude/ ディレクトリ構成をまとめて作成
+    mkdir -p .claude/rules .claude/hooks .claude/skills .claude/agents
+
+    # settings.json
+    cp "$TEMPLATES_DIR/claude/dot-claude/settings.json" .claude/settings.json
+
+    # rules（全ファイル）
+    for rule_file in "$TEMPLATES_DIR/claude/dot-claude/rules"/*.md; do
+        cp "$rule_file" ".claude/rules/$(basename "$rule_file")"
+    done
+
+    # hooks
+    cp "$TEMPLATES_DIR/claude/dot-claude/hooks/check-docs-update.sh" .claude/hooks/check-docs-update.sh
+    cp "$TEMPLATES_DIR/claude/dot-claude/hooks/notify-completion.sh" .claude/hooks/notify-completion.sh
+    chmod +x .claude/hooks/*.sh
+
+    # agents（全ファイル）
+    for agent_file in "$TEMPLATES_DIR/claude/dot-claude/agents"/*.md; do
+        cp "$agent_file" ".claude/agents/$(basename "$agent_file")"
+    done
+
+    # skills（全ディレクトリ）
+    for skill_dir in "$TEMPLATES_DIR/claude/dot-claude/skills"/*/; do
+        skill_name="$(basename "$skill_dir")"
+        mkdir -p ".claude/skills/$skill_name"
+        cp "$skill_dir/SKILL.md" ".claude/skills/$skill_name/SKILL.md"
+    done
 fi
 
 # --- Initial commit ---
